@@ -91,6 +91,39 @@
 			animate()*/
 		</script>
 		<script>
+			function makeTextSprite(message, parameters = {}) {
+				const fontface = parameters.fontface || "Arial Black"
+				const fontsize = parameters.fontsize || 96 // Ещё крупнее
+
+				const canvas = document.createElement("canvas")
+				canvas.width = 4096 // БОЛЬШОЙ холст
+				canvas.height = 512
+
+				const context = canvas.getContext("2d")
+				context.clearRect(0, 0, canvas.width, canvas.height)
+
+				context.font = `bold ${fontsize}px ${fontface}`
+				context.fillStyle = "white" // яркий белый
+				context.textBaseline = "top"
+				context.fillText(message, 50, 50)
+
+				const texture = new THREE.CanvasTexture(canvas)
+				texture.needsUpdate = true
+				texture.minFilter = THREE.LinearFilter
+
+				const spriteMaterial = new THREE.SpriteMaterial({
+					map: texture,
+					transparent: true,
+				})
+				const sprite = new THREE.Sprite(spriteMaterial)
+
+				// Настройка масштаба по длине строки
+				const scaleX = message.length * 1.2
+				sprite.scale.set(scaleX, 6, 1) // шире и выше
+
+				return sprite
+			}
+
 			const scene = new THREE.Scene()
 			const camera = new THREE.PerspectiveCamera(
 				75,
@@ -140,6 +173,14 @@
 
 			// 🔥 начальное возмущение — импульс в центре
 			E[Math.floor(N / 2)] = 1
+
+			const formula1 = makeTextSprite("Eᵢⁿ⁺¹ = Eᵢⁿ + (c·dt/dz)·(Bᵢⁿ - Bᵢ₋₁ⁿ)")
+			formula1.position.set(-8, 7, 0)
+			scene.add(formula1)
+
+			const formula2 = makeTextSprite("Bᵢⁿ⁺¹ = Bᵢⁿ + (c·dt/dz)·(Eᵢ₊₁ⁿ - Eᵢⁿ)")
+			formula2.position.set(-8, 6, 0)
+			scene.add(formula2)
 
 			function animate() {
 				requestAnimationFrame(animate)
