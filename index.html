@@ -11,118 +11,44 @@
 		</style>
 	</head>
 	<body>
-		<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-		<script>
-			/*const scene = new THREE.Scene()
-			const camera = new THREE.PerspectiveCamera(
-				75,
-				window.innerWidth / window.innerHeight,
-				0.1,
-				1000
-			)
-			const renderer = new THREE.WebGLRenderer({ antialias: true })
-			renderer.setSize(window.innerWidth, window.innerHeight)
-			document.body.appendChild(renderer.domElement)
-			camera.position.set(6, 6, 12)
-			camera.lookAt(0, 0, 0)
-
-			// Параметры волны
-			const N = 100
-			const dz = 0.3
-			const E0 = 2.5
-			const B0 = 1.5
-			const k = 1
-			const omega = 2
-
-			// Стрелки
-			let E_arrows = []
-			let B_arrows = []
-
-			for (let i = 0; i < N; i++) {
-				const z = (i - N / 2) * dz
-				const origin = new THREE.Vector3(0, 0, z)
-
-				const E_arrow = new THREE.ArrowHelper(
-					new THREE.Vector3(1, 0, 0),
-					origin.clone(),
-					0,
-					0x00ffff
-				)
-				const B_arrow = new THREE.ArrowHelper(
-					new THREE.Vector3(0, 1, 0),
-					origin.clone(),
-					0,
-					0x00ff00
-				)
-
-				scene.add(E_arrow)
-				scene.add(B_arrow)
-
-				E_arrows.push(E_arrow)
-				B_arrows.push(B_arrow)
-			}
-
-			let time = 0
-
-			function animate() {
-				requestAnimationFrame(animate)
-				time += 0.05
-
-				for (let i = 0; i < N; i++) {
-					const z = (i - N / 2) * dz
-
-					const E_mag = E0 * Math.sin(k * z - omega * time)
-					const B_mag = B0 * Math.sin(k * z - omega * time)
-
-					E_arrows[i].setLength(Math.abs(E_mag))
-					E_arrows[i].setDirection(
-						new THREE.Vector3(Math.sign(E_mag) || 1, 0, 0)
-					)
-
-					B_arrows[i].setLength(Math.abs(B_mag))
-					B_arrows[i].setDirection(
-						new THREE.Vector3(0, Math.sign(B_mag) || 1, 0)
-					)
-				}
-
-				renderer.render(scene, camera)
-			}
-
-			animate()*/
-		</script>
+		<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
 		<script>
 			function makeTextSprite(message, parameters = {}) {
 				const fontface = parameters.fontface || "Arial Black"
-				const fontsize = parameters.fontsize || 96 // Ещё крупнее
-
+				const fontsize = parameters.fontsize || 96
 				const canvas = document.createElement("canvas")
-				canvas.width = 4096 // БОЛЬШОЙ холст
+				canvas.width = 4096
 				canvas.height = 512
-
 				const context = canvas.getContext("2d")
 				context.clearRect(0, 0, canvas.width, canvas.height)
-
 				context.font = `bold ${fontsize}px ${fontface}`
-				context.fillStyle = "white" // яркий белый
+				context.fillStyle = "white"
 				context.textBaseline = "top"
 				context.fillText(message, 50, 50)
-
 				const texture = new THREE.CanvasTexture(canvas)
-				texture.needsUpdate = true
 				texture.minFilter = THREE.LinearFilter
-
 				const spriteMaterial = new THREE.SpriteMaterial({
 					map: texture,
 					transparent: true,
 				})
 				const sprite = new THREE.Sprite(spriteMaterial)
-
-				// Настройка масштаба по длине строки
-				const scaleX = message.length * 1.2
-				sprite.scale.set(scaleX, 6, 1) // шире и выше
-
+				sprite.scale.set(message.length * 1.2, 6, 1)
 				return sprite
 			}
+
+			// ⚙️ GUI параметры
+			const params = { mode: "Vectors" }
+			const gui = new dat.GUI()
+			gui
+				.add(params, "mode", ["Vectors", "Waveform"])
+				.name("Visualization")
+				.onChange(() => {
+					// Сброс значений волн
+					E.fill(0)
+					B.fill(0)
+					E[Math.floor(N / 2)] = 1
+				})
 
 			const scene = new THREE.Scene()
 			const camera = new THREE.PerspectiveCamera(
@@ -137,21 +63,24 @@
 			camera.position.set(10, 10, 20)
 			camera.lookAt(0, 0, 0)
 
-			const N = 100 // кол-во точек вдоль оси Z
-			const dz = 0.5 // шаг по пространству
-			const dt = 0.05 // шаг по времени
-			const c = 1 // скорость света (в относительных единицах)
+			const N = 100
+			const dz = 0.5
+			const dt = 0.05
+			const c = 1
 
 			let E = new Array(N).fill(0)
 			let B = new Array(N).fill(0)
+			E[Math.floor(N / 2)] = 1
 
-			const E_arrows = []
-			const B_arrows = []
+			const E_arrows = [],
+				B_arrows = [],
+				waveform = []
 
 			for (let i = 0; i < N; i++) {
 				const z = (i - N / 2) * dz
 				const origin = new THREE.Vector3(0, 0, z)
 
+				// стрелки
 				const E_arrow = new THREE.ArrowHelper(
 					new THREE.Vector3(1, 0, 0),
 					origin.clone(),
@@ -164,16 +93,22 @@
 					0,
 					0x00ff00
 				)
-
-				scene.add(E_arrow)
-				scene.add(B_arrow)
+				scene.add(E_arrow, B_arrow)
 				E_arrows.push(E_arrow)
 				B_arrows.push(B_arrow)
+
+				// линия
+				const point = new THREE.Mesh(
+					new THREE.SphereGeometry(0.1, 8, 8),
+					new THREE.MeshBasicMaterial({ color: 0xffff00 })
+				)
+				point.position.set(z, 0, 0)
+				point.visible = false // выключено по умолчанию
+				scene.add(point)
+				waveform.push(point)
 			}
 
-			// 🔥 начальное возмущение — импульс в центре
-			E[Math.floor(N / 2)] = 1
-
+			// формулы
 			const formula1 = makeTextSprite("Eᵢⁿ⁺¹ = Eᵢⁿ + (c·dt/dz)·(Bᵢⁿ - Bᵢ₋₁ⁿ)")
 			formula1.position.set(-8, 7, 0)
 			scene.add(formula1)
@@ -185,31 +120,48 @@
 			function animate() {
 				requestAnimationFrame(animate)
 
-				// 🔁 Расчёт E
+				// Расчёт E и B
 				for (let i = 1; i < N - 1; i++) {
 					E[i] += ((c * dt) / dz) * (B[i] - B[i - 1])
 				}
-
-				// 🔁 Расчёт B
 				for (let i = 0; i < N - 1; i++) {
 					B[i] += ((c * dt) / dz) * (E[i + 1] - E[i])
 				}
 
-				// 🎯 Обновление визуализации
+				// ❗ Отражения на концах
+				if (params.mode === "Waveform") {
+					E[0] = -E[1]
+					E[N - 1] = -E[N - 2]
+					B[0] = -B[1]
+					B[N - 1] = -B[N - 2]
+				}
+
+				// Обновление визуализации
 				for (let i = 0; i < N; i++) {
 					const eVal = E[i]
 					const bVal = B[i]
 
 					const scaleFactor = 5
-					E_arrows[i].setLength(scaleFactor * Math.abs(eVal))
-					E_arrows[i].setDirection(
-						new THREE.Vector3(Math.sign(eVal) || 1, 0, 0)
-					)
+					const eDir = Math.sign(eVal) || 1
+					const bDir = Math.sign(bVal) || 1
 
-					B_arrows[i].setLength(scaleFactor * Math.abs(bVal))
-					B_arrows[i].setDirection(
-						new THREE.Vector3(0, Math.sign(bVal) || 1, 0)
-					)
+					const arrowVis = params.mode === "Vectors"
+					const waveVis = params.mode === "Waveform"
+
+					E_arrows[i].visible = arrowVis
+					B_arrows[i].visible = arrowVis
+					waveform[i].visible = waveVis
+
+					if (arrowVis) {
+						E_arrows[i].setLength(scaleFactor * Math.abs(eVal))
+						E_arrows[i].setDirection(new THREE.Vector3(eDir, 0, 0))
+						B_arrows[i].setLength(scaleFactor * Math.abs(bVal))
+						B_arrows[i].setDirection(new THREE.Vector3(0, bDir, 0))
+					}
+
+					if (waveVis) {
+						waveform[i].position.y = eVal * 2 // желтые точки показывают волну E
+					}
 				}
 
 				renderer.render(scene, camera)
