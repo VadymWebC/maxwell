@@ -23,67 +23,7 @@
 			const renderer = new THREE.WebGLRenderer({ antialias: true })
 			renderer.setSize(window.innerWidth, window.innerHeight)
 			document.body.appendChild(renderer.domElement)
-			camera.position.set(0, 0, 10)
-
-			// Начальные точки
-			const origin = new THREE.Vector3(0, 0, 0)
-
-			// E и B — направлены вдоль X и Y, колеблются вдоль Z
-			const E_arrow = new THREE.ArrowHelper(
-				new THREE.Vector3(1, 0, 0),
-				origin,
-				0,
-				0x00ffff
-			) // cyan
-			const B_arrow = new THREE.ArrowHelper(
-				new THREE.Vector3(0, 1, 0),
-				origin,
-				0,
-				0x00ff00
-			) // lime
-			scene.add(E_arrow)
-			scene.add(B_arrow)
-
-			let time = 0
-
-			function animate() {
-				requestAnimationFrame(animate)
-				time += 0.05
-
-				const k = 1 // волновое число
-				const omega = 2 // угловая частота
-				const z = 0 // положение точки наблюдения по Z
-				const E0 = 2.5
-				const B0 = 1.5
-
-				const E_mag = E0 * Math.sin(k * z - omega * time)
-				const B_mag = B0 * Math.sin(k * z - omega * time)
-
-				E_arrow.setDirection(new THREE.Vector3(1, 0, 0))
-				E_arrow.setLength(Math.abs(E_mag))
-				E_arrow.position.set(0, 0, 0)
-
-				B_arrow.setDirection(new THREE.Vector3(0, 1, 0))
-				B_arrow.setLength(Math.abs(B_mag))
-				B_arrow.position.set(0, 0, 0)
-
-				renderer.render(scene, camera)
-			}
-
-			animate()*/
-		</script>
-		<script>
-			const scene = new THREE.Scene()
-			const camera = new THREE.PerspectiveCamera(
-				75,
-				window.innerWidth / window.innerHeight,
-				0.1,
-				1000
-			)
-			const renderer = new THREE.WebGLRenderer({ antialias: true })
-			renderer.setSize(window.innerWidth, window.innerHeight)
-			document.body.appendChild(renderer.domElement)
-			camera.position.set(6, 6, 12) /*  0, 8, 20  */
+			camera.position.set(6, 6, 12)
 			camera.lookAt(0, 0, 0)
 
 			// Параметры волны
@@ -142,6 +82,92 @@
 					B_arrows[i].setLength(Math.abs(B_mag))
 					B_arrows[i].setDirection(
 						new THREE.Vector3(0, Math.sign(B_mag) || 1, 0)
+					)
+				}
+
+				renderer.render(scene, camera)
+			}
+
+			animate()*/
+		</script>
+		<script>
+			const scene = new THREE.Scene()
+			const camera = new THREE.PerspectiveCamera(
+				75,
+				window.innerWidth / window.innerHeight,
+				0.1,
+				1000
+			)
+			const renderer = new THREE.WebGLRenderer({ antialias: true })
+			renderer.setSize(window.innerWidth, window.innerHeight)
+			document.body.appendChild(renderer.domElement)
+			camera.position.set(10, 10, 20)
+			camera.lookAt(0, 0, 0)
+
+			const N = 100 // кол-во точек вдоль оси Z
+			const dz = 0.5 // шаг по пространству
+			const dt = 0.05 // шаг по времени
+			const c = 1 // скорость света (в относительных единицах)
+
+			let E = new Array(N).fill(0)
+			let B = new Array(N).fill(0)
+
+			const E_arrows = []
+			const B_arrows = []
+
+			for (let i = 0; i < N; i++) {
+				const z = (i - N / 2) * dz
+				const origin = new THREE.Vector3(0, 0, z)
+
+				const E_arrow = new THREE.ArrowHelper(
+					new THREE.Vector3(1, 0, 0),
+					origin.clone(),
+					0,
+					0x00ffff
+				)
+				const B_arrow = new THREE.ArrowHelper(
+					new THREE.Vector3(0, 1, 0),
+					origin.clone(),
+					0,
+					0x00ff00
+				)
+
+				scene.add(E_arrow)
+				scene.add(B_arrow)
+				E_arrows.push(E_arrow)
+				B_arrows.push(B_arrow)
+			}
+
+			// 🔥 начальное возмущение — импульс в центре
+			E[Math.floor(N / 2)] = 1
+
+			function animate() {
+				requestAnimationFrame(animate)
+
+				// 🔁 Расчёт E
+				for (let i = 1; i < N - 1; i++) {
+					E[i] += ((c * dt) / dz) * (B[i] - B[i - 1])
+				}
+
+				// 🔁 Расчёт B
+				for (let i = 0; i < N - 1; i++) {
+					B[i] += ((c * dt) / dz) * (E[i + 1] - E[i])
+				}
+
+				// 🎯 Обновление визуализации
+				for (let i = 0; i < N; i++) {
+					const eVal = E[i]
+					const bVal = B[i]
+
+					const scaleFactor = 5
+					E_arrows[i].setLength(scaleFactor * Math.abs(eVal))
+					E_arrows[i].setDirection(
+						new THREE.Vector3(Math.sign(eVal) || 1, 0, 0)
+					)
+
+					B_arrows[i].setLength(scaleFactor * Math.abs(bVal))
+					B_arrows[i].setDirection(
+						new THREE.Vector3(0, Math.sign(bVal) || 1, 0)
 					)
 				}
 
